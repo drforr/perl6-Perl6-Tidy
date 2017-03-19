@@ -3,7 +3,7 @@ use v6;
 use Test;
 use Perl6::Tidy;
 
-plan 2;
+plan 3;
 
 subtest {
 	plan 1;
