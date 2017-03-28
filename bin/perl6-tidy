@@ -2,11 +2,18 @@
 
 use Perl6::Tidy;
 
-sub MAIN( Str $filename, Bool :$strip-comments = False ) {
+sub MAIN( Str $filename,
+		Bool :$strip-comments = False,
+		Bool :$strip-pod = False,
+		Bool :$strip-documentation = False,
+		Indent-Style :$indent-style = 'none' ) {
 	my $text = $filename.IO.slurp;
 
 	my $pt = Perl6::Tidy.new(
-		:strip-comments( $strip-comments )
+		:strip-comments( $strip-comments ),
+		:strip-pod( $strip-pod ),
+		:strip-documentation( $strip-documentation ),
+		:indent-style( $indent-style )
 	);
 	say $pt.tidy( $text );
 }
