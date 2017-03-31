@@ -29,7 +29,7 @@ subtest {
 		plan 1;
 		
 		my $pt = Perl6::Tidy.new( :strip-comments( True ) );
-		my $tidied = Q{1+2 };
+		my $tidied = Q{1+2};
 		my $parsed = $pt.tidy( $source );
 		is $parsed, $tidied, Q{strip comments};
 	}, Q{strip comments};
