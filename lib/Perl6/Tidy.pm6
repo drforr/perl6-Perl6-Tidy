@@ -125,15 +125,14 @@ subset Non-Negative-Int of Int where * > -1;
 subset Positive-Int of Int where * > 0;
 
 subset Indent-Style of Str where * eq
-	'none'  |
-	'tab'   |
-	'space' |
-	'Allman' |
-	'GNU' |
+	'none'        |
+	'tab'         |
+	'Allman'      |
+	'GNU'         |
 	'Whitesmiths' |
-	'Horstmann' |
-	'Ratliff' |
-	'Pico' |
+	'Horstmann'   |
+	'Ratliff'     |
+	'Pico'        |
 	'Lisp'
 ;
 
@@ -142,7 +141,7 @@ subset Indent-Amount of Positive-Int;
 constant TAB-STOP-IN-SPACES = 8;
 
 role Spare-Tokens {
-	method tab-character {
+	method _tab-character {
 		return ' ' x TAB-STOP-IN-SPACES if $.indent-with-spaces;
 		return "\t";
 	}
@@ -156,28 +155,102 @@ role Spare-Tokens {
 	}
 
 	method spare-half-tab {
-		my $half-tab = ' ' x floor( TAB-STOP-IN-SPACES / 2 );
-		Perl6::WS.new(
-			:from( 0 ),
-			:to( 0 ),
-			:content( $half-tab )
-		);
-	}
-
-	method spare-tab {
-		Perl6::WS.new(
-			:from( 0 ),
-			:to( 0 ),
-			:content( self.tab-character )
-		);
+		my $half-tab =
+			' ' x floor( TAB-STOP-IN-SPACES / 2 );
+		Perl6::WS.new( :from( 0 ), :to( 0 ), :content( $half-tab ) );
 	}
 
 	method spare-indent( Int $depth ) {
 		Perl6::WS.new(
 			:from( 0 ),
 			:to( 0 ),
-			:content( self.tab-character x $depth )
+			:content( self._tab-character x $depth )
 		);
+	}
+
+	method spare-newline-indent( Int $depth ) {
+		self.spare-newline,
+		self.spare-indent( $depth )
+	}
+}
+# Lets you "walk" the array as if you have a virtual edit "cursor".
+#
+# Deleting entries behind the "cursor" moves the cursor backwards.
+# Deleting entries in front of the "cursor" has no effect.
+# Adding entries behind the "cursor" moves the cursor forwards.
+# Adding entries in front of the cursor has no effect. (*)
+# 
+# * Arguably it should move the cursor forwards, as you presumably
+#   don't want to iterate over what you've just inserted.
+#
+my class CursorList {
+	has $.index = 0;
+	has @.token;
+
+	method clamp {
+		$!index = 0 if $.index < 0;
+		$!index = @.token.end if $.index > @.token.end;
+	}
+
+	method from-list( @token ) {
+		self.bless( :token( @token ) )
+	}
+
+	method to-string {
+		my $document = '';
+		$document ~= $_.content for @.token;
+		$document;
+	}
+
+	# let 'move' move outside the array.
+	# That way 'loop-done' will terminate correctly.
+	#
+	method move( Int $amount = 1 ) {
+		$!index += $amount;
+	}
+	method loop-done { $.index > @.token.end; }
+
+	method is-end { $.index == @.token.end; }
+
+	method peek( Int $amount = 1 ) {
+		return Any if $.index + $amount > @.token.end;
+		return Any if $.index + $amount < 0;
+		@.token[$.index + $amount];
+	}
+
+	method current { @.token[$.index] }
+
+	method delete-behind {
+		@.token.splice( $.index - 1, 1 );
+		self.move(-1);
+	}
+	method delete-behind-by-type( Perl6::Element $type ) {
+		self.delete-behind
+			while self.peek( -1 ) ~~ $type;
+	}
+	method delete-self {
+		@.token.splice( $.index, 1 );
+		self.move(-1);
+	}
+	method delete-ahead {
+		@.token.splice( $.index + 1, 1 );
+	}
+	method delete-ahead-by-type( Perl6::Element $type ) {
+		self.delete-ahead
+			while self.peek ~~ $type;
+	}
+
+	method delete-around-by-type( Perl6::Element $type ) {
+		self.delete-behind-by-type( $type );
+		self.delete-ahead-by-type( $type );
+	}
+
+	method add-behind( *@token ) {
+		@.token.splice( $.index, 0, @token );
+		self.move( @token.elems );
+	}
+	method add-ahead( *@token ) {
+		@.token.splice( $.index + 1, 0, @token );
 	}
 }
 
@@ -199,7 +272,7 @@ class Perl6::Tidy::Internals {
 	has Non-Negative-Int $.square-depth = 0;
 	has Non-Negative-Int $.paren-depth = 0;
 
-	has Perl6::Element @.token;
+	has CursorList $.cursor;
 
 	method debug-indent {
 		"\{: $.brace-depth; " ~
@@ -237,344 +310,163 @@ class Perl6::Tidy::Internals {
 		}
 	}
 
-	my class CursorList {
-		has $.index = 0;
-		has @.token;
-
-		method clamp {
-			$!index = 0 if $.index < 0;
-			$!index = @.token.end if $.index > @.token.end;
-		}
-
-		method from-list( @token ) {
-			self.bless( :token( @token ) )
-		}
-
-		# let 'move' move outside the array.
-		# That way 'loop-done' will terminate correctly.
-		#
-		method move( Int $amount = 1 ) {
-			$!index += $amount;
-		}
-		method loop-done { $.index > @.token.end; }
-
-		method is-end { $.index == @.token.end; }
-
-		method peek( Int $amount = 1 ) {
-			return Any if $.index + $amount > @.token.end;
-			return Any if $.index + $amount < 0;
-			@.token[$.index + $amount];
-		}
-
-		method current { @.token[$.index] }
-
-		method delete-behind {
-			@.token.splice( $.index - 1, 1 );
-			self.move(-1);
-		}
-		method delete-behind-by-type( Perl6::Element $type ) {
-			while self.peek( -1 ) ~~ $type {
-				self.delete-behind;
-			}
-		}
-		method delete-self {
-			@.token.splice( $.index, 1 );
-			self.move(-1);
-		}
-		method delete-ahead {
-			@.token.splice( $.index + 1, 1 );
-		}
-		method delete-ahead-by-type( Perl6::Element $type ) {
-			while self.peek ~~ $type {
-				self.delete-ahead;
-			}
-		}
-
-		method add-behind( *@token ) {
-			@.token.splice( $.index, 0, @token );
-			self.move( @token.elems );
-		}
-		method add-ahead( *@token ) {
-			@.token.splice( $.index + 1, 0, @token );
+	method reflow-pod {
+		if $.strip-pod or $.strip-documentation {
+			$.cursor.delete-behind-by-type( Perl6::Invisible );
+			$.cursor.delete-self;
 		}
 	}
 
-	method reflow-open-brace( CursorList $token ) {
+	method reflow-comment {
+		if $.strip-comments or $.strip-documentation {
+			$.cursor.delete-behind-by-type( Perl6::Invisible );
+			$.cursor.delete-self;
+		}
+	}
+
+	method reflow-open-brace {
+		if $.indent-style ne 'none' {
+			$.cursor.delete-around-by-type( Perl6::Invisible );
+		}
 		given $.indent-style {
 			when 'tab' | 'Ratliff' | 'Lisp' {
-				$token.delete-behind-by-type(
-					Perl6::Invisible
-				);
-				$token.delete-ahead-by-type(
-					Perl6::Invisible
-				);
-				$token.add-behind(
-					self.spare-space
-				);
-				$token.add-ahead(
-					self.spare-newline,
-					self.spare-indent(
+				$.cursor.add-behind( self.spare-space );
+				$.cursor.add-ahead(
+					self.spare-newline-indent(
 						$.brace-depth
 					)
 				);
 			}
 			when 'Allman' {
-				$token.delete-behind-by-type(
-					Perl6::Invisible
-				);
-				$token.delete-ahead-by-type(
-					Perl6::Invisible
-				);
-				$token.add-behind(
-					self.spare-newline,
-					self.spare-indent(
+				$.cursor.add-behind(
+					self.spare-newline-indent(
 						$.brace-depth - 1
 					)
 				);
-				$token.add-ahead(
-					self.spare-newline,
-					self.spare-indent(
+				$.cursor.add-ahead(
+					self.spare-newline-indent(
 						$.brace-depth
 					)
 				);
 			}
 			when 'GNU' {
-				$token.delete-behind-by-type(
-					Perl6::Invisible
-				);
-				$token.delete-ahead-by-type(
-					Perl6::Invisible
-				);
-				$token.add-behind(
-					self.spare-newline,
-					self.spare-indent(
+				$.cursor.add-behind(
+					self.spare-newline-indent(
 						$.brace-depth - 1
 					),
 					self.spare-half-tab
 				);
-				$token.add-ahead(
-					self.spare-newline,
-					self.spare-indent(
+				$.cursor.add-ahead(
+					self.spare-newline-indent(
 						$.brace-depth
 					)
 				);
 			}
 			when 'Whitesmiths' {
-				$token.delete-behind-by-type(
-					Perl6::Invisible
-				);
-				$token.delete-ahead-by-type(
-					Perl6::Invisible
-				);
-				$token.add-behind(
-					self.spare-newline,
-					self.spare-indent(
+				$.cursor.add-behind(
+					self.spare-newline-indent(
 						$.brace-depth
 					)
 				);
-				$token.add-ahead(
-					self.spare-newline,
-					self.spare-indent(
+				$.cursor.add-ahead(
+					self.spare-newline-indent(
 						$.brace-depth
 					)
 				);
 			}
 			when 'Horstmann' | 'Pico' {
-				$token.delete-behind-by-type(
-					Perl6::Invisible
-				);
-				$token.delete-ahead-by-type(
-					Perl6::Invisible
-				);
-				$token.add-behind(
-					self.spare-newline,
-					self.spare-indent(
+				$.cursor.add-behind(
+					self.spare-newline-indent(
 						$.brace-depth - 1
 					)
 				);
-				$token.add-ahead(
-					self.spare-indent(
-						$.brace-depth
-					)
+				$.cursor.add-ahead(
+					self.spare-indent( $.brace-depth )
 				);
 			}
 		}
 	}
 
-	method reflow-semicolon( CursorList $token ) {
+	method reflow-semicolon {
+		if $.indent-style ne 'none' {
+			$.cursor.delete-around-by-type( Perl6::Invisible );
+		}
 		given $.indent-style {
-			when 'tab' | 'Allman' | 'GNU' | 'Whitesmiths' | 'Horstmann' | 'Ratliff' | 'Lisp' {
-				$token.delete-behind-by-type(
-					Perl6::Invisible
-				);
-				$token.delete-ahead-by-type(
-					Perl6::Invisible
-				);
-				$token.add-ahead(
+			when 'tab' | 'Allman' | 'GNU' | 'Whitesmiths' |
+				'Horstmann' | 'Ratliff' | 'Pico' | 'Lisp' {
+				$.cursor.add-ahead(
 					self.spare-newline,
-					self.spare-indent(
-						$.brace-depth
-					)
-				);
-			}
-			when 'Pico' {
-				$token.delete-behind-by-type(
-					Perl6::Invisible
-				);
-				$token.delete-ahead-by-type(
-					Perl6::Invisible
-				);
-				$token.add-ahead(
-					self.spare-newline,
-					self.spare-indent(
-						$.brace-depth
-					)
+					self.spare-indent( $.brace-depth )
 				);
 			}
 		}
 	}
 
-	method reflow-close-brace( CursorList $token ) {
+	method reflow-close-brace {
+		if $.indent-style ne 'none' {
+			$.cursor.delete-around-by-type( Perl6::Invisible );
+		}
 		given $.indent-style {
 			when 'tab' | 'Allman' | 'Horstmann' {
-				$token.delete-behind-by-type(
-					Perl6::Invisible
-				);
-				$token.delete-ahead-by-type(
-					Perl6::Invisible
-				);
-				$token.add-behind(
-					self.spare-newline,
-					self.spare-indent(
+				$.cursor.add-behind(
+					self.spare-newline-indent(
 						$.brace-depth
 					)
 				);
-				if !$token.is-end {
-					$token.add-ahead(
-						self.spare-newline
-					);
-				}
 			}
 			when 'GNU' {
-				$token.delete-behind-by-type(
-					Perl6::Invisible
-				);
-				$token.delete-ahead-by-type(
-					Perl6::Invisible
-				);
-				$token.add-behind(
-					self.spare-newline,
-					self.spare-indent(
+				$.cursor.add-behind(
+					self.spare-newline-indent(
 						$.brace-depth
 					),
 					self.spare-half-tab
 				);
-				if !$token.is-end {
-					$token.add-ahead(
-						self.spare-newline
-					);
-				}
 			}
-			when 'Whitesmiths' {
-				$token.delete-behind-by-type(
-					Perl6::Invisible
-				);
-				$token.delete-ahead-by-type(
-					Perl6::Invisible
-				);
-				$token.add-behind(
-					self.spare-newline,
-					self.spare-indent(
-						$.brace-depth + 1
-					),
-				);
-				if !$token.is-end {
-					$token.add-ahead(
-						self.spare-newline
-					);
-				}
-			}
-			when 'Pico' | 'Lisp' {
-				$token.delete-behind-by-type(
-					Perl6::Invisible
-				);
-				$token.delete-ahead-by-type(
-					Perl6::Invisible
-				);
-				$token.add-behind(
-					self.spare-space
-				);
-				if !$token.is-end {
-					$token.add-ahead(
-						self.spare-newline
-					);
-				}
-			}
-			when 'Ratliff' {
-				$token.delete-behind-by-type(
-					Perl6::Invisible
-				);
-				$token.delete-ahead-by-type(
-					Perl6::Invisible
-				);
-				$token.add-behind(
-					self.spare-newline,
-					self.spare-indent(
+			when 'Whitesmiths' | 'Ratliff' {
+				$.cursor.add-behind(
+					self.spare-newline-indent(
 						$.brace-depth + 1
 					)
 				);
-				if !$token.is-end {
-					$token.add-ahead(
-						self.spare-newline
-					);
-				}
+			}
+			when 'Pico' | 'Lisp' {
+				$.cursor.add-behind( self.spare-space );
+			}
+		}
+		if $.indent-style ne 'none' {
+			if !$.cursor.is-end {
+				$.cursor.add-ahead( self.spare-newline );
 			}
 		}
 	}
 
 	method tidy( Str $source ) {
 		my @token = $.parser.to-tokens-only( $source );
-		my $token = CursorList.from-list( @token );
+		$!cursor = CursorList.from-list( @token );
 
-		while !$token.loop-done {
-			self.update-indent( $token.current );
-			given $token.current {
+		while !$.cursor.loop-done {
+			self.update-indent( $.cursor.current );
+			given $.cursor.current {
 				when Perl6::Pod {
-					if $.strip-pod or
-						$.strip-documentation {
-						$token.delete-behind-by-type(
-							Perl6::Invisible
-						);
-						$token.delete-self;
-					}
+					self.reflow-pod;
 				}
 				when Perl6::Comment {
-					if $.strip-comments or
-						$.strip-documentation {
-						$token.delete-behind-by-type(
-							Perl6::Invisible
-						);
-						$token.delete-self;
-					}
+					self.reflow-comment;
 				}
 				when Perl6::Block::Enter {
-					self.reflow-open-brace( $token );
+					self.reflow-open-brace;
 				}
 				when Perl6::Semicolon {
-					self.reflow-semicolon( $token );
+					self.reflow-semicolon;
 				}
 				when Perl6::Block::Exit {
-					self.reflow-close-brace( $token );
+					self.reflow-close-brace;
 				}
 			}
-			$token.move;
+			$.cursor.move;
 		}
 
-		my $iterated = '';
-		for $token.token {
-			$iterated ~= $_.content;
-		}
-		$iterated;
+		$.cursor.to-string;
 	}
 }
 
