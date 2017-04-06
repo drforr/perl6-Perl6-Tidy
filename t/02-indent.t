@@ -318,6 +318,42 @@ END
 		done-testing;
 	}, Q{nested bare block};
 
+	$source = chomp Q:to[END];
+class A {     method run()     {     my $i = 0;     method 
+                  generate()     {         i = 10.rand();         return i;     
+                  }     } };   class B{       method run()     {         my $b = 
+                  False;         my $i = start {.generate()};         await $i; 
+                  my $x = $i.result;         if $x < 10             {           
+                  $b = True;             }     } }
+END
+	my $tabbed = chomp Q:to[END];
+class A {
+	method run() {
+		my $i = 0;
+		method generate() {
+			i = 10.rand();
+			return i;
+		}
+	}
+};
+class B {
+	method run() {
+		my $b = False;
+		my $i = start {
+			.generate()
+		};
+		await $i;
+		my $x = $i.result;
+		if $x < 10 {
+			$b = True;
+		}
+	}
+}
+END
+	$tidied = $pt.tidy( $source );
+	is $tidied, $tabbed,
+		Q{from IRC};
+
 	done-testing;
 }, Q{1tbs};
 

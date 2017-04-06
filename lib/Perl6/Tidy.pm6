@@ -267,6 +267,7 @@ my class CursorList {
 	}
 	method add-ahead( *@token ) {
 		@.token.splice( $.index + 1, 0, @token );
+		self.move( @token.elems );
 	}
 }
 
@@ -351,7 +352,6 @@ class Perl6::Tidy::Internals {
 					self.spare-newline,
 					self.spare-indent( $.brace-depth )
 				);
-				$.cursor.move( 2 );
 			}
 			when 'Allman' {
 				$.cursor.add-behind(
@@ -420,7 +420,6 @@ class Perl6::Tidy::Internals {
 					self.spare-newline,
 					self.spare-indent( $.brace-depth )
 				);
-				$.cursor.move( 2 );
 			}
 		}
 	}
