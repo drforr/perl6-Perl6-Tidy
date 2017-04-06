@@ -141,38 +141,50 @@ subset Indent-Amount of Positive-Int;
 constant TAB-STOP-IN-SPACES = 8;
 
 role Spare-Tokens {
-	method _tab-character {
-		return ' ' x TAB-STOP-IN-SPACES if $.indent-with-spaces;
-		return "\t";
+	method _tab( Int $count = 1 ) { 
+		my $tab = $.indent-with-spaces ??
+			' ' x TAB-STOP-IN-SPACES !!
+			"\t";
+		$tab x $count;
 	}
 
 	method spare-newline {
-		Perl6::Newline.new( :from( 0 ), :to( 0 ), :content( "\n" ) );
+		Perl6::Newline.new(
+			:from( 0 ),
+			:to( 0 ),
+			:content( "\n" )
+		);
 	}
 
 	method spare-space {
-		Perl6::WS.new( :from( 0 ), :to( 0 ), :content( " " ) );
-	}
-
-	method spare-half-tab {
-		my $half-tab =
-			' ' x floor( TAB-STOP-IN-SPACES / 2 );
-		Perl6::WS.new( :from( 0 ), :to( 0 ), :content( $half-tab ) );
+		Perl6::WS.new(
+			:from( 0 ),
+			:to( 0 ),
+			:content( " " )
+		);
 	}
 
 	method spare-indent( Int $depth ) {
 		Perl6::WS.new(
 			:from( 0 ),
 			:to( 0 ),
-			:content( self._tab-character x $depth )
+			:content( self._tab( $depth ) )
 		);
 	}
 
-	method spare-newline-indent( Int $depth ) {
-		self.spare-newline,
-		self.spare-indent( $depth )
+	# "\t\t    " is a single WS token.
+	#
+	method spare-indent-and-a-half( Int $depth ) {
+		my $half-tab =
+			' ' x floor( TAB-STOP-IN-SPACES / 2 );
+		Perl6::WS.new(
+			:from( 0 ),
+			:to( 0 ),
+			:content( ( self._tab( $depth ) ) ~ $half-tab )
+		);
 	}
 }
+
 # Lets you "walk" the array as if you have a virtual edit "cursor".
 #
 # Deleting entries behind the "cursor" moves the cursor backwards.
@@ -219,6 +231,10 @@ my class CursorList {
 	}
 
 	method current { @.token[$.index] }
+
+	method replace-with( Perl6::Element $node ) {
+		@.token.splice( $.index, 1, $node )
+	}
 
 	method delete-behind {
 		@.token.splice( $.index - 1, 1 );
@@ -332,57 +348,63 @@ class Perl6::Tidy::Internals {
 			when 'tab' | 'Ratliff' | 'Lisp' {
 				$.cursor.add-behind( self.spare-space );
 				$.cursor.add-ahead(
-					self.spare-newline-indent(
-						$.brace-depth
-					)
+					self.spare-newline,
+					self.spare-indent( $.brace-depth )
 				);
+				$.cursor.move( 2 );
 			}
 			when 'Allman' {
 				$.cursor.add-behind(
-					self.spare-newline-indent(
-						$.brace-depth - 1
-					)
+					self.spare-newline,
+					self.spare-indent( $.brace-depth - 1 )
 				);
 				$.cursor.add-ahead(
-					self.spare-newline-indent(
-						$.brace-depth
-					)
+					self.spare-newline,
+					self.spare-indent( $.brace-depth )
 				);
 			}
 			when 'GNU' {
 				$.cursor.add-behind(
-					self.spare-newline-indent(
+					self.spare-newline,
+					self.spare-indent-and-a-half(
 						$.brace-depth - 1
-					),
-					self.spare-half-tab
+					)
 				);
 				$.cursor.add-ahead(
-					self.spare-newline-indent(
-						$.brace-depth
-					)
+					self.spare-newline,
+					self.spare-indent( $.brace-depth )
 				);
 			}
 			when 'Whitesmiths' {
 				$.cursor.add-behind(
-					self.spare-newline-indent(
-						$.brace-depth
-					)
+					self.spare-newline,
+					self.spare-indent( $.brace-depth )
 				);
 				$.cursor.add-ahead(
-					self.spare-newline-indent(
-						$.brace-depth
-					)
+					self.spare-newline,
+					self.spare-indent( $.brace-depth )
 				);
 			}
 			when 'Horstmann' | 'Pico' {
 				$.cursor.add-behind(
-					self.spare-newline-indent(
-						$.brace-depth - 1
-					)
+					self.spare-newline,
+					self.spare-indent( $.brace-depth - 1 )
 				);
 				$.cursor.add-ahead(
 					self.spare-indent( $.brace-depth )
 				);
+			}
+		}
+	}
+
+	method reflow-whitespace {
+		if $.indent-style ne 'none' {
+			$.cursor.delete-around-by-type( Perl6::Invisible );
+		}
+		given $.indent-style {
+			when 'tab' | 'Allman' | 'GNU' | 'Whitesmiths' |
+				'Horstmann' | 'Ratliff' | 'Pico' | 'Lisp' {
+				$.cursor.replace-with( self.spare-space );
 			}
 		}
 	}
@@ -398,6 +420,7 @@ class Perl6::Tidy::Internals {
 					self.spare-newline,
 					self.spare-indent( $.brace-depth )
 				);
+				$.cursor.move( 2 );
 			}
 		}
 	}
@@ -409,24 +432,22 @@ class Perl6::Tidy::Internals {
 		given $.indent-style {
 			when 'tab' | 'Allman' | 'Horstmann' {
 				$.cursor.add-behind(
-					self.spare-newline-indent(
-						$.brace-depth
-					)
+					self.spare-newline,
+					self.spare-indent( $.brace-depth )
 				);
 			}
 			when 'GNU' {
 				$.cursor.add-behind(
-					self.spare-newline-indent(
+					self.spare-newline,
+					self.spare-indent-and-a-half(
 						$.brace-depth
-					),
-					self.spare-half-tab
+					)
 				);
 			}
 			when 'Whitesmiths' | 'Ratliff' {
 				$.cursor.add-behind(
-					self.spare-newline-indent(
-						$.brace-depth + 1
-					)
+					self.spare-newline,
+					self.spare-indent( $.brace-depth + 1 )
 				);
 			}
 			when 'Pico' | 'Lisp' {
@@ -458,6 +479,9 @@ class Perl6::Tidy::Internals {
 				}
 				when Perl6::Semicolon {
 					self.reflow-semicolon;
+				}
+				when Perl6::WS {
+					self.reflow-whitespace;
 				}
 				when Perl6::Block::Exit {
 					self.reflow-close-brace;
