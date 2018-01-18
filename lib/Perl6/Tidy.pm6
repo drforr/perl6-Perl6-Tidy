@@ -13,8 +13,8 @@ Perl6::Tidy - Tidy Perl 6 source code according to your guidelines
         :strip-pod( False ),
         :strip-documentation( False ), # Superset of documentation and pod
 
-        :indent-style( 'tab' ),
-	:indent-with-spaces( False ) # Indent using tabs, spaces are optional.
+        :indent-style( 'k-n-r' ),
+	:indent-with-spaces( False ) # Indent with k-n-r style, spaces optional.
     );
     my $tidied = $pt.tidy( Q:to[_END_] );
        code-goes-here();
@@ -25,7 +25,7 @@ Perl6::Tidy - Tidy Perl 6 source code according to your guidelines
     Indents code to match simple tab style (mine in this case).
 
     Choices of tab style include:
-        'tab' (aka 1-true-brace-style')
+        'tab' (aka 1-true-brace-style or k-n-r)
         'Allman'
         'GNU'
         'Whitesmiths'
@@ -48,7 +48,7 @@ Uses L<Perl6::Parser> to parse your source into a Perl 6 data structure, then wa
 
 Just as a reminder, here are quasi-formal names for common indentation styles.
 
-    'tab' - "One True Brace Style":
+    'tab' - "One True Brace Style", "K&R":
 
     while (x == y) {
         something();
@@ -124,9 +124,13 @@ use Perl6::Parser;
 subset Non-Negative-Int of Int where * > -1;
 subset Positive-Int of Int where * > 0;
 
+# This doesn't quite work as well when you have "aliases" for a given
+# indent-style. Of course, the answer is another abstraction layer.
+#
 subset Indent-Style of Str where * eq
 	'none'        |
 	'tab'         |
+	'k-n-r'       |
 	'Allman'      |
 	'GNU'         |
 	'Whitesmiths' |
@@ -346,7 +350,7 @@ class Perl6::Tidy::Internals {
 			$.cursor.delete-around-by-type( Perl6::Invisible );
 		}
 		given $.indent-style {
-			when 'tab' | 'Ratliff' | 'Lisp' {
+			when 'tab' | 'k-n-r' | 'Ratliff' | 'Lisp' {
 				$.cursor.add-behind( self.spare-space );
 				$.cursor.add-ahead(
 					self.spare-newline,
@@ -402,8 +406,9 @@ class Perl6::Tidy::Internals {
 			$.cursor.delete-around-by-type( Perl6::Invisible );
 		}
 		given $.indent-style {
-			when 'tab' | 'Allman' | 'GNU' | 'Whitesmiths' |
-				'Horstmann' | 'Ratliff' | 'Pico' | 'Lisp' {
+			when 'tab' | 'k-n-r' | 'Allman' | 'GNU' |
+				'Whitesmiths' | 'Horstmann' | 'Ratliff' |
+				'Pico' | 'Lisp' {
 				$.cursor.replace-with( self.spare-space );
 			}
 		}
@@ -414,8 +419,9 @@ class Perl6::Tidy::Internals {
 			$.cursor.delete-around-by-type( Perl6::Invisible );
 		}
 		given $.indent-style {
-			when 'tab' | 'Allman' | 'GNU' | 'Whitesmiths' |
-				'Horstmann' | 'Ratliff' | 'Pico' | 'Lisp' {
+			when 'tab' | 'k-n-r' | 'Allman' | 'GNU' |
+				'Whitesmiths' | 'Horstmann' | 'Ratliff' |
+				'Pico' | 'Lisp' {
 				$.cursor.add-ahead(
 					self.spare-newline,
 					self.spare-indent( $.brace-depth )
@@ -429,7 +435,7 @@ class Perl6::Tidy::Internals {
 			$.cursor.delete-around-by-type( Perl6::Invisible );
 		}
 		given $.indent-style {
-			when 'tab' | 'Allman' | 'Horstmann' {
+			when 'tab' | 'k-n-r' | 'Allman' | 'Horstmann' {
 				$.cursor.add-behind(
 					self.spare-newline,
 					self.spare-indent( $.brace-depth )

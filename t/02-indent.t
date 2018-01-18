@@ -1,11 +1,9 @@
 use v6;
 
-use Test;
 use Perl6::Tidy;
+use Test;
 
-plan 8;
-
-subtest {
+subtest '1tbs aka k-n-r', {
 	my $pt = Perl6::Tidy.new( :indent-style( 'tab' ) );
 	my ( $source, $tidied );
 	subtest {
@@ -354,10 +352,49 @@ END
 	is $tidied, $tabbed,
 		Q{from IRC};
 
-	done-testing;
-}, Q{1tbs};
+	subtest 'k-n-r alias', {
+		$pt = Perl6::Tidy.new( :indent-style( 'k-n-r' ) );
+		$source = chomp Q:to[END];
+class A {     method run()     {     my $i = 0;     method 
+                  generate()     {         i = 10.rand();         return i;     
+                  }     } };   class B{       method run()     {         my $b = 
+                  False;         my $i = start {.generate()};         await $i; 
+                  my $x = $i.result;         if $x < 10             {           
+                  $b = True;             }     } }
+END
+	my $tabbed = chomp Q:to[END];
+class A {
+	method run() {
+		my $i = 0;
+		method generate() {
+			i = 10.rand();
+			return i;
+		}
+	}
+};
+class B {
+	method run() {
+		my $b = False;
+		my $i = start {
+			.generate()
+		};
+		await $i;
+		my $x = $i.result;
+		if $x < 10 {
+			$b = True;
+		}
+	}
+}
+END
+		$tidied = $pt.tidy( $source );
+		is $tidied, $tabbed,
+			Q{from IRC};
+	};
 
-subtest {
+	done-testing;
+};
+
+subtest 'Allman', {
 	my $pt = Perl6::Tidy.new( :indent-style( 'Allman' ) );
 	my ( $source, $tidied );
 	subtest {
@@ -685,9 +722,9 @@ END
 	}, Q{nested bare block};
 
 	done-testing;
-}, Q{Allman};
+};
 
-subtest {
+subtest 'GNU', {
 	my $pt = Perl6::Tidy.new( :indent-style( 'GNU' ) );
 	my ( $source, $tidied );
 	subtest {
@@ -1015,9 +1052,9 @@ END
 	}, Q{nested bare block};
 
 	done-testing;
-}, Q{GNU};
+};
 
-subtest {
+subtest 'Whitesmiths', {
 	my $pt = Perl6::Tidy.new( :indent-style( 'Whitesmiths' ) );
 	my ( $source, $tidied );
 	subtest {
@@ -1345,9 +1382,9 @@ END
 	}, Q{nested bare block};
 
 	done-testing;
-}, Q{Whitesmiths};
+};
 
-subtest {
+subtest 'Horstmann', {
 	my $pt = Perl6::Tidy.new( :indent-style( 'Horstmann' ) );
 	my ( $source, $tidied );
 	subtest {
@@ -1668,9 +1705,9 @@ END
 	}, Q{nested bare block};
 
 	done-testing;
-}, Q{Horstmann};
+};
 
-subtest {
+subtest 'Pico', {
 	my $pt = Perl6::Tidy.new( :indent-style( 'Pico' ) );
 	my ( $source, $tidied );
 	subtest {
@@ -1977,9 +2014,9 @@ END
 	}, Q{nested bare block};
 
 	done-testing;
-}, Q{Pico};
+};
 
-subtest {
+subtest 'Ratliff', {
 	my $pt = Perl6::Tidy.new( :indent-style( 'Ratliff' ) );
 	my ( $source, $tidied );
 	subtest {
@@ -2293,9 +2330,9 @@ END
 	}, Q{nested bare block};
 
 	done-testing;
-}, Q{Ratliff};
+};
 
-subtest {
+subtest 'Lisp', {
 	my $pt = Perl6::Tidy.new( :indent-style( 'Lisp' ) );
 	my ( $source, $tidied );
 	subtest {
@@ -2595,6 +2632,8 @@ END
 	}, Q{nested bare block};
 
 	done-testing;
-}, Q{Lisp};
+};
+
+done-testing;
 
 # vim: ft=perl6
