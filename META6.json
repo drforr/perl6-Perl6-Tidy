@@ -1,0 +1,28 @@
+{
+  "auth" : "github:drforr",
+  "authors" : [
+    "Jeffrey Goff <drforr@pobox.com>"
+  ],
+  "build-depends" : [ ],
+  "depends" : [
+    "Test::META"
+  ],
+  "description" : "Perl 6 tidier",
+  "license" : "Artistic-2.0",
+  "meta6" : "0",
+  "name" : "Perl6::Tidy",
+  "perl" : "6.c",
+  "provides" : {
+    "Perl6::Tidy" : "lib/Perl6/Tidy.pm6"
+  },
+  "resources" : [ ],
+  "source-url" : "https://github.com/drforr/perl6-Perl6-Tidy.git",
+  "support" : {
+    "source" : "https://github.com/drforr/perl6-Perl6-Tidy.git"
+  },
+  "tags" : [
+    "Tidying"
+  ],
+  "test-depends" : [ ],
+  "version" : "0.0.1"
+}
