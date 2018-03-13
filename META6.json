@@ -5,7 +5,8 @@
   ],
   "build-depends" : [ ],
   "depends" : [
-    "Test::META"
+    "Test::META",
+    "Perl6::Parser"
   ],
   "description" : "Perl 6 tidier",
   "license" : "Artistic-2.0",
