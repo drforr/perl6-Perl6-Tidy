@@ -5,6 +5,7 @@
   ],
   "build-depends" : [ ],
   "depends" : [
+    "Perl6::Parser",
     "Test::META"
   ],
   "description" : "Perl 6 tidier",
@@ -24,5 +25,5 @@
     "Tidying"
   ],
   "test-depends" : [ ],
-  "version" : "0.0.1"
+  "version" : "y"
 }

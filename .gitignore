@@ -1,3 +1,4 @@
 *.swo
 *.swp
+Perl6-Tidy-*
 lib/.precomp/

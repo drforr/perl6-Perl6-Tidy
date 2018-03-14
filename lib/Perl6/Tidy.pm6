@@ -502,7 +502,7 @@ class Perl6::Tidy::Internals {
 # I'd love to come up with a better solution that lets me clean up
 # $.{brace,bracket..}-depth with no boilerplate.
 #
-class Perl6::Tidy:ver<0.0.1>  {
+class Perl6::Tidy:ver<y>  {
 	has Bool          $.strip-comments = False;
 	has Bool          $.strip-pod = False;
 	has Bool          $.strip-documentation = False;
