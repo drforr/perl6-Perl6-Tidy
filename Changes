@@ -1,6 +1,8 @@
 Revision history for Perl6-Tidy
 
 {{$NEXT}}
+
+0.0.3  2018-03-15T16:36:49+01:00
     - Reformat README.md - the release module reformatted my README.md
 
 0.0.2  2018-03-14T11:40:09+01:00
