@@ -8,21 +8,7 @@ Perl6::Tidy - Tidy Perl 6 source code according to your guidelines
 SYNOPSIS
 ========
 
-    my $pt = Perl6::Tidy.new(
-        :strip-comments( False ),
-        :strip-pod( False ),
-        :strip-documentation( False ), # Superset of documentation and pod
-
-        :indent-style( 'k-n-r' ),
-
-    :indent-with-spaces( False ) # Indent with k-n-r style, spaces optional.
-
-    );
-    my $tidied = $pt.tidy( Q:to[_END_] );
-       code-goes-here();
-       that you( $want-to, $parse );
-    _END_
-    say $tidied;
+    bin/perl6-tidy
 
     Indents code to match simple tab style (mine in this case).
 
@@ -62,7 +48,11 @@ while (x == y) {
 Allman:
 
 ```
-while (x == y) { something(); somethingelse(); }
+while (x == y)
+{
+    something();
+    somethingelse();
+}
 ```
 
 GNU:
@@ -119,10 +109,27 @@ while (x == y) {
     somethingelse(); }
 ```
 
-METHODS
-=======
+Installation
+============
 
-  * tidy( Str $source )
+* Using zef (a module management tool bundled with Rakudo Star):
 
-Tidy the source code according to the guidelines set up in the constructor.
+```
+    zef update && zef install Perl6::Tidy
+```
 
+## Testing
+
+To run tests:
+
+```
+    prove -e perl6
+```
+
+## Author
+
+Jeffrey Goff, DrForr on #perl6, https://github.com/drforr/
+
+## License
+
+Artistic License 2.0
