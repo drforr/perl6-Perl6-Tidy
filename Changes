@@ -1,6 +1,7 @@
 Revision history for Perl6-Tidy
 
 {{$NEXT}}
+    - Reformat README.md - not sure how the oriiginal formatting got lost.
 
 0.0.2  2018-03-14T11:40:09+01:00
     - Get rid of the 'y' version

@@ -52,35 +52,72 @@ Just as a reminder, here are quasi-formal names for common indentation styles.
 
 'tab' - "One True Brace Style", "K&R":
 
-while (x == y) { something(); somethingelse(); }
+```
+while (x == y) {
+    something();
+    somethingelse();
+}
+```
 
 Allman:
 
+```
 while (x == y) { something(); somethingelse(); }
+```
 
 GNU:
 
-while (x == y) { something(); somethingelse(); }
+```
+while (x == y)
+{
+    something();
+    somethingelse();
+}
+```
 
 Whitesmiths:
 
-while (x == y) { something(); somethingelse(); }
+```
+while (x == y)
+  {
+    something();
+    somethingelse();
+  }
+```
 
 Horstmann
 
-while (x == y) { something(); somethingelse(); }
+```
+while (x == y)
+{   something();
+    somethingelse();
+}
+```
 
 Pico
 
-while (x == y) { something(); somethingelse(); }
+```
+while (x == y)
+{   something();
+    somethingelse(); }
+```
 
 Ratliff
 
-while (x == y) { something(); somethingelse(); }
+```
+while (x == y) {
+    something();
+    somethingelse();
+    }
+```
 
 Lisp
 
-while (x == y) { something(); somethingelse(); }
+```
+while (x == y) {
+    something();
+    somethingelse(); }
+```
 
 METHODS
 =======
