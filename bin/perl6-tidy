@@ -9,7 +9,9 @@ sub MAIN( Str $filename,
 		Bool :$strip-pod = False,
 		Bool :$strip-documentation = False,
 		Indent-Style :$indent-style = 'none',
-		Bool :$indent-with-spaces = False ) {
+		Bool :$indent-with-spaces = False,
+		Indent-Amount :$indent-amount = 1,
+		Operator-Style :$operator-style = 'none' ) {
 	my $text = $filename.IO.slurp;
 
 	my $pt = Perl6::Tidy.new(
@@ -17,7 +19,9 @@ sub MAIN( Str $filename,
 		:strip-pod( $strip-pod ),
 		:strip-documentation( $strip-documentation ),
 		:indent-style( $indent-style ),
-		:indent-with-spaces( $indent-with-spaces )
+		:indent-with-spaces( $indent-with-spaces ),
+		:indent-amount( $indent-amount ),
+		:operator-style( $operator-style )
 	);
 	say $pt.tidy( $text );
 }

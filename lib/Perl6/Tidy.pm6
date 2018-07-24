@@ -8,13 +8,19 @@ Perl6::Tidy - Tidy Perl 6 source code according to your guidelines
 
 =begin SYNOPSIS
 
+    # All of these arguments are optional.
+    # Some rely on others to work, for instance 'indent-with-spaces'
+    # only makes sense when used with an indentation style 'indent-style'.
+    #
     my $pt = Perl6::Tidy.new(
         :strip-comments( False ),
         :strip-pod( False ),
         :strip-documentation( False ), # Superset of documentation and pod
 
         :indent-style( 'k-n-r' ),
-	:indent-with-spaces( False ) # Indent with k-n-r style, spaces optional.
+	:indent-with-spaces( False ), # Indent in k-n-r style, spaces optional.
+
+        :operator-style( 'cuddled' ) # Remove unneeded WS between operators
     );
     my $tidied = $pt.tidy( Q:to[_END_] );
        code-goes-here();
@@ -42,9 +48,11 @@ Perl6::Tidy - Tidy Perl 6 source code according to your guidelines
 
 =begin DESCRIPTION
 
-Uses L<Perl6::Parser> to parse your source into a Perl 6 data structure, then walks the data structure and prints it according to your format guidelines.
+Uses L<Perl6::Parser> to parse your source into a Perl 6 data structure, then walks the data structure and prints it according to your format guidelines. Currently you can re-indent your Perl 6 code, strip POD and comments, and change spacing around operatos. For more details about what you can do with your Perl 6 code, read the sections below.
 
 =begin Indentation
+
+You can specify indentation styles by name from the external interface according to the key below. I'll expose the actual brace mechanism later on if you want to create your own custom styles. Doing so might interact with other sections of the code, so please be careful.
 
 Just as a reminder, here are quasi-formal names for common indentation styles.
 
@@ -107,6 +115,12 @@ Just as a reminder, here are quasi-formal names for common indentation styles.
 
 =end Indentation
 
+=begin Operators
+
+Use 'cuddled' to remove unneeded whitespace around operators, or 'uncuddled' to add whitespace. The subtraction (C<->) operator remains unaffected because removing or adding whitespace around it can potentially break code.
+
+=end Operators
+
 =end DESCRIPTION
 
 =begin METHODS
@@ -127,6 +141,8 @@ subset Positive-Int of Int where * > 0;
 # This doesn't quite work as well when you have "aliases" for a given
 # indent-style. Of course, the answer is another abstraction layer.
 #
+# Also, it's currently case-insensitive, d'oh.
+#
 subset Indent-Style of Str where * eq
 	'none'        |
 	'tab'         |
@@ -143,6 +159,12 @@ subset Indent-Style of Str where * eq
 subset Indent-Amount of Positive-Int;
 
 constant TAB-STOP-IN-SPACES = 8;
+
+subset Operator-Style of Str where * eq
+	'none' |
+	'uncuddled' |
+	'cuddled'
+;
 
 role Spare-Tokens {
 	method _tab( Int $count = 1 ) { 
@@ -275,32 +297,37 @@ my class CursorList {
 	}
 }
 
-class Perl6::Tidy::Internals {
-	also does Spare-Tokens;
-
-	has Bool          $.strip-comments is required;
-	has Bool          $.strip-pod is required;
-	has Bool          $.strip-documentation is required;
-
-	has Indent-Style  $.indent-style is required;
-	has Bool	  $.indent-with-spaces is required;
-	has Indent-Amount $.indent-amount is required;
-
-	has Perl6::Parser $.parser = Perl6::Parser.new;
-
-	has Non-Negative-Int $.brace-depth = 0;
-	has Non-Negative-Int $.pointy-depth = 0;
-	has Non-Negative-Int $.square-depth = 0;
-	has Non-Negative-Int $.paren-depth = 0;
-
-	has CursorList $.cursor;
-
+my role Debugging {
 	method debug-indent {
 		"\{: $.brace-depth; " ~
 		"\<: $.pointy-depth; " ~
 		"\[: $.square-depth; " ~
 		"\(: $.paren-depth;";
 	}
+}
+
+class Perl6::Tidy::Internals {
+	also does Spare-Tokens;
+	also does Debugging;
+
+	has Bool             $.strip-comments is required;
+	has Bool             $.strip-pod is required;
+	has Bool             $.strip-documentation is required;
+
+	has Indent-Style     $.indent-style is required;
+	has Bool	     $.indent-with-spaces is required;
+	has Indent-Amount    $.indent-amount is required;
+
+	has Operator-Style   $.operator-style is required;
+
+	has Perl6::Parser    $.parser = Perl6::Parser.new;
+
+	has Non-Negative-Int $.brace-depth = 0;
+	has Non-Negative-Int $.pointy-depth = 0;
+	has Non-Negative-Int $.square-depth = 0;
+	has Non-Negative-Int $.paren-depth = 0;
+
+	has CursorList       $.cursor;
 
 	# Use REs to match the braces because ':(..)' is valid.
 	#
@@ -327,6 +354,21 @@ class Perl6::Tidy::Internals {
 						die "Unknown open balanced";
 					}
 				}
+			}
+		}
+	}
+
+	method reflow-operator {
+		return unless $.cursor.current;
+		return if $.operator-style eq 'none';
+
+		unless $.cursor.current.content eq '-' {
+			$.cursor.delete-around-by-type(
+				Perl6::Invisible
+			);
+			if $.operator-style eq 'uncuddled' {
+				$.cursor.add-behind( self.spare-space );
+				$.cursor.add-ahead( self.spare-space );
 			}
 		}
 	}
@@ -473,6 +515,9 @@ class Perl6::Tidy::Internals {
 		while !$.cursor.loop-done {
 			self.update-indent( $.cursor.current );
 			given $.cursor.current {
+				when Perl6::Operator {
+					self.reflow-operator;
+				}
 				when Perl6::Pod {
 					self.reflow-pod;
 				}
@@ -503,13 +548,15 @@ class Perl6::Tidy::Internals {
 # $.{brace,bracket..}-depth with no boilerplate.
 #
 class Perl6::Tidy:ver<0.0.3>  {
-	has Bool          $.strip-comments = False;
-	has Bool          $.strip-pod = False;
-	has Bool          $.strip-documentation = False;
+	has Bool           $.strip-comments = False;
+	has Bool           $.strip-pod = False;
+	has Bool           $.strip-documentation = False;
 
-	has Indent-Style  $.indent-style = 'none';
-	has Bool	  $.indent-with-spaces = False;
-	has Indent-Amount $.indent-amount = 1;
+	has Indent-Style   $.indent-style = 'none';
+	has Bool	   $.indent-with-spaces = False;
+	has Indent-Amount  $.indent-amount = 1;
+
+	has Operator-Style $.operator-style = 'none';
 
 	method tidy( Str $source ) {
 		my $internals = Perl6::Tidy::Internals.new(
@@ -518,7 +565,8 @@ class Perl6::Tidy:ver<0.0.3>  {
 			:strip-documentation( $.strip-documentation ),
 			:indent-style( $.indent-style ),
 			:indent-with-spaces( $.indent-with-spaces ),
-			:indent-amount( $.indent-amount )
+			:indent-amount( $.indent-amount ),
+			:operator-style( $.operator-style )
 		);
 		$internals.tidy( $source );
 	}
