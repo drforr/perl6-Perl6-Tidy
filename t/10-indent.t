@@ -355,15 +355,15 @@ END
 	subtest 'k-n-r alias', {
 		$pt = Perl6::Tidy.new( :indent-style( 'k-n-r' ) );
 		$source = chomp Q:to[END];
-class A {     method run()     {     my $i = 0;     method 
+class AA {     method run()     {     my $i = 0;     method 
                   generate()     {         i = 10.rand();         return i;     
-                  }     } };   class B{       method run()     {         my $b = 
+                  }     } };   class BB{       method run()     {         my $b = 
                   False;         my $i = start {.generate()};         await $i; 
                   my $x = $i.result;         if $x < 10             {           
                   $b = True;             }     } }
 END
 	my $tabbed = chomp Q:to[END];
-class A {
+class AA {
 	method run() {
 		my $i = 0;
 		method generate() {
@@ -372,7 +372,7 @@ class A {
 		}
 	}
 };
-class B {
+class BB {
 	method run() {
 		my $b = False;
 		my $i = start {
