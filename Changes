@@ -2,6 +2,10 @@ Revision history for Perl6-Tidy
 
 {{$NEXT}}
 
+0.0.6  2019-02-24T14:39:32+09:00
+
+    - Fix for 'redeclared class' errors in test suite
+
 0.0.5  2018-07-24T11:55:11-06:00
     - Add basic operator cuddling and uncuddling
 
